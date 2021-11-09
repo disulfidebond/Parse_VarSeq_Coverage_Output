@@ -63,10 +63,6 @@ else:
             time.sleep(2)
 
 def getUniqueExons(df):
-    # sort the exons in order by extracting the exon int, 
-    # sorting, then adding back the prefix string
-    # match is to the 'exonN' from the original dataframe
-    # Dev Comment: this is kept in case having multiple exons and not canonical exons only is required
     geneList = df['Name'].tolist()
     exonList = [x.split('/') for x in geneList]
     exonList = [x[-1] for x in exonList]
@@ -76,20 +72,21 @@ def getUniqueExons(df):
     exonIdxList.sort()
     exonList = [('ex' + str(x)) for x in exonIdxList]
     return exonList
+
 def getCoverageStringAsList(l):
     scannedList = [x for x in l if x[1] == False]
     if len(scannedList) > 0:
         # update: get 20x || 100x coverage for exons 
         # that have less than 100% 20x || 100x coverage
         lowExonCoverageValues = [x[2] for x in scannedList]
-        lowExonCoveragePercent = [(100-x) for x in lowExonCoverageValues]
+        lowExonCoveragePercent = [round((100-x),3) for x in lowExonCoverageValues]
         returnedList = []
         for idx in range(len(scannedList)):
             s = str(scannedList[idx][0]) + ':' + str(lowExonCoveragePercent[idx])
             returnedList.append(s)
         return (False, returnedList)
     else:
-        return (True, [str(x[0]) + ':' + str(x[2]) for x in l])
+        return (True, [str(x[0]) + ':' + str(round(x[2],3)) for x in l])
 
 
 
@@ -147,7 +144,7 @@ for n in geneList:
         transcriptName = '_'.join(transcriptNameList)
     # calculate arithm mean for all exons
     arithm_mean_list = [float(x[2]) for x in meanDepth_covered_tuple]
-    arithm_mean = statistics.mean(arithm_mean_list)
+    arithm_mean = round(statistics.mean(arithm_mean_list),3)
     exonsWithMean = getCoverageStringAsList(meanDepth_covered_tuple)
     outList = [str(x) for x in exonsWithMean[1]]
     outString = ','.join(outList)
@@ -179,7 +176,7 @@ df_out = pd.DataFrame({
     'Transcript_Number' : transcriptList,
     'Number_of_Exons' : exon_ct_list, 
     'Mean_Coverage_All_Exons' : exons_mean_cov,
-    'Mean_Coverage_for_Each_Exon' : mean_depth_list,  
+    'Mean_Coverage_for_Each_Exon' : mean_depth_list, 
     'Exons_with_nucleotides_lessthan_20x (:% of that exon covered to 20x or less (1- numbers)' : cov_20x_list,
     'Exons_with_nucleotides_lessthan_100x (:% of that exon covered to 100x or less (1- numbers)' : cov_100x_list
 })
