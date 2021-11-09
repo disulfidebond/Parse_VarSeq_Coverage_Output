@@ -16,8 +16,3 @@ The sampleName is the sample name from the coverage file from VarSeq. Special ch
 If no text gene list is provided, then the script will assume the gene names in the 'Names' column of the coverage file are correct, and will use those. If a text gene list is provided, then the script will verify the gene list against the gene names in the 'Names' column of the coverager file. If there is a mismatch between the provided gene list text file and the genes listed in the coverage file, the script will output a warning and stop.
 
 If the `--force` option is used, then the script will output a warning if there is a mismatch between the provided gene list text file and the genes listed in the coverage file, but will still run. If no text gene list is provided, then this option is ignored.
-
-
-# Integration with R
-
-In addition, the code to run it in R is included.
