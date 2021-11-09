@@ -3,6 +3,7 @@ import argparse
 import time
 import datetime
 import statistics
+import sys
 
 t = datetime.datetime.now()
 ts_string = t.strftime('%m%d%Y_%H%M%S')
@@ -11,8 +12,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--infile', '-i', type=str, help='input filename with coverage stats from VarSeq', required=True)
 parser.add_argument('--outfile', '-o', type=str, help='output filename')
-parser.add_argument('--min20', type=float, nargs='?', const='100.0', default='100.0', help='minimum value for 100 % 20x coverage, default = 100.0')
-parser.add_argument('--min100', type=float, nargs='?', const='100.0', default='100.0', help='minimum value for 100% 100x coverage, default = 100.0')
 parser.add_argument('--sampleName', '-s', type=str, help='sample name in VarSeq output file', required=True)
 parser.add_argument('--geneList', '-g', type=str, help='newline-delimited text file with genes of interest, default is to infer gene names from the VarSeq file.')
 
@@ -28,8 +27,8 @@ sampleName = args.sampleName
 
 print(f'using sample name {sampleName}')
 
-min_20x_value = float(args.min20)
-min_100x_value = float(args.min100)
+min_20x_value = 100.0
+min_100x_value = 100.0
 
 df = pd.read_csv(args.infile, sep='\t')
 
@@ -46,8 +45,20 @@ else:
         for i in fOpen:
             i = i.rstrip('\r\n')
             geneList.append(i)
+    # update: compare provided gene list with list of genes, stop if mismatch
+    check_geneList = df['Name'].tolist()
+    checked_geneList = [x for x in check_geneList if x not in geneList]
+    if len(checked_geneList) > 0:
+        print('Warning, found genes in VarSeq that were not present in provided gene list:')
+        print(checked_geneList)
+        print('Exiting now.')
+        sys.exit()
 
 def getUniqueExons(df):
+    # sort the exons in order by extracting the exon int, 
+    # sorting, then adding back the prefix string
+    # match is to the 'exonN' from the original dataframe
+    # Dev Comment: this is kept in case having multiple exons and not canonical exons only is required
     geneList = df['Name'].tolist()
     exonList = [x.split('/') for x in geneList]
     exonList = [x[-1] for x in exonList]
@@ -60,7 +71,15 @@ def getUniqueExons(df):
 def getCoverageStringAsList(l):
     scannedList = [x for x in l if x[1] == False]
     if len(scannedList) > 0:
-        return (False, [str(x[0]) + ':' + str(x[2]) for x in scannedList])
+        # update: get 20x || 100x coverage for exons 
+        # that have less than 100% 20x || 100x coverage
+        lowExonCoverageValues = [x[2] for x in scannedList]
+        lowExonCoveragePercent = [(100-x) for x in lowExonCoverageValues]
+        returnedList = []
+        for idx in range(len(scannedList)):
+            s = str(scannedList[idx][0]) + ':' + str(lowExonCoveragePercent[idx])
+            returnedList.append(s)
+        return (False, returnedList)
     else:
         return (True, [str(x[0]) + ':' + str(x[2]) for x in l])
 
@@ -72,9 +91,7 @@ transcriptList = []
 mean_depth_list = []
 exon_ct_list = []
 exons_mean_cov = []
-cov_20x_bool_list = []
 cov_20x_list = []
-cov_100x_bool_list = []
 cov_100x_list = []
 # end columns definitions
 
@@ -134,24 +151,18 @@ for n in geneList:
     # 20x results
     exonsWithLow20x = getCoverageStringAsList(min20x_covered_tuple)
     if exonsWithLow20x[0] == True:
-        cov_20x_bool_list.append(True)
-        outList = [str(x) for x in exonsWithLow20x[1]]
-        outString = ','.join(outList)
+        outString = ''
         cov_20x_list.append(outString)
     else:
-        cov_20x_bool_list.append(False)
         outList = [str(x) for x in exonsWithLow20x[1]]
         outString = ','.join(outList)
         cov_20x_list.append(outString)
     # 100x results
     exonsWithLow100x = getCoverageStringAsList(min100x_covered_tuple)
     if exonsWithLow100x[0] == True:
-        cov_100x_bool_list.append(True)
-        outList = [str(x) for x in exonsWithLow100x[1]]
-        outString = ','.join(outList)
+        outString = '' 
         cov_100x_list.append(outString)
     else:
-        cov_100x_bool_list.append(False)
         outList = [str(x) for x in exonsWithLow100x[1]]
         outString = ','.join(outList)
         cov_100x_list.append(outString)
@@ -160,11 +171,9 @@ df_out = pd.DataFrame({
     'Transcript_Number' : transcriptList,
     'Number_of_Exons' : exon_ct_list, 
     'Mean_Coverage_All_Exons' : exons_mean_cov,
-    'Mean_Coverage_for_Each_Exon' : mean_depth_list, 
-    'Exons_at_100_20x' : cov_20x_bool_list, 
-    'Exons_with_lessthan_20x_Levels' : cov_20x_list,
-    'Exons_at_100_100x' : cov_100x_bool_list,
-    'Exons_with_lessthan_100x_Levels' : cov_100x_list
+    'Mean_Coverage_for_Each_Exon' : mean_depth_list,  
+    'Exons_with_nucleotides_lessthan_20x (:% of that exon covered to 20x or less (1- numbers)' : cov_20x_list,
+    'Exons_with_nucleotides_lessthan_100x (:% of that exon covered to 100x or less (1- numbers)' : cov_100x_list
 })
 
 df_out.to_csv(outFileName, sep='\t', index=False)
