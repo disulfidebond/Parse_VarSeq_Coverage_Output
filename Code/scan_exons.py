@@ -2,6 +2,7 @@ import pandas as pd
 import argparse
 import time
 import datetime
+import statistics
 
 t = datetime.datetime.now()
 ts_string = t.strftime('%m%d%Y_%H%M%S')
@@ -10,7 +11,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--infile', '-i', type=str, help='input filename with coverage stats from VarSeq', required=True)
 parser.add_argument('--outfile', '-o', type=str, help='output filename')
-parser.add_argument('--mean', '-m', nargs='?', const='5.0', default='5.0', type=float, help='minimum average coverage for all exons, default = 5.0')
 parser.add_argument('--min20', type=float, nargs='?', const='100.0', default='100.0', help='minimum value for 100 % 20x coverage, default = 100.0')
 parser.add_argument('--min100', type=float, nargs='?', const='100.0', default='100.0', help='minimum value for 100% 100x coverage, default = 100.0')
 parser.add_argument('--sampleName', '-s', type=str, help='sample name in VarSeq output file', required=True)
@@ -28,7 +28,6 @@ sampleName = args.sampleName
 
 print(f'using sample name {sampleName}')
 
-min_mean_depth = float(args.mean)
 min_20x_value = float(args.min20)
 min_100x_value = float(args.min100)
 
@@ -41,8 +40,6 @@ if not args.geneList:
     splitList = [x.split('/') for x in nameCol]
     nameList = list(set([x[0] for x in splitList]))
     geneList = nameList
-    # print('using geneList:')
-    # [print(x) for x in geneList]
 else:
     geneList = []
     with open(args.geneList) as fOpen:
@@ -65,18 +62,16 @@ def getCoverageStringAsList(l):
     if len(scannedList) > 0:
         return (False, [str(x[0]) + ':' + str(x[2]) for x in scannedList])
     else:
-        # scannedValues = [x[2] for x in l]
-        # update 10282021 JRC: include all exons with sufficient coverage
-        # replaced code below that took max and returned one value 
-        # with returning entire list of exons
         return (True, [str(x[0]) + ':' + str(x[2]) for x in l])
 
 
 
 # columns for output DF
 gene_name_list = []
-mean_depth_bool_list = []
+transcriptList = []
 mean_depth_list = []
+exon_ct_list = []
+exons_mean_cov = []
 cov_20x_bool_list = []
 cov_20x_list = []
 cov_100x_bool_list = []
@@ -95,15 +90,17 @@ for n in geneList:
     meanDepth_col = sampleName + ' Mean Depth'
     min20x_col = sampleName + ' % 20x'
     min100x_col = sampleName + ' % 100x'
+    exonCt = 0
     for r in exonList:
+        exonCt += 1
         exonSublist = tmpdf.loc[tmpdf['Name'].str.endswith(r),:]
-        # check mean depth
+        # get transcript name
+        tNameList = tmpdf['Name'].tolist()
+        tNameList = [x.split('/') for x in tNameList]
+        transcriptName = tNameList[0][1]
+        # get mean depth
         meanDepthList = exonSublist[meanDepth_col].tolist()
-        if max(meanDepthList) < min_mean_depth:
-            meanDepth_covered_tuple.append((r, False, max(meanDepthList)))
-        else:
-            meanDepth_covered_tuple.append((r, True, max(meanDepthList)))
-        # check min %20x coverage
+        meanDepth_covered_tuple.append((r, transcriptName, max(meanDepthList)))
         min20xList = exonSublist[min20x_col].tolist()
         if max(min20xList) < min_20x_value:
             min20x_covered_tuple.append((r, False, max(min20xList)))
@@ -116,18 +113,24 @@ for n in geneList:
         else:
             min100x_covered_tuple.append((r, True, max(min100xList)))
     # mean coverage results
-    exonsWithLowMean = getCoverageStringAsList(meanDepth_covered_tuple)
-    if exonsWithLowMean[0] == True:
-        mean_depth_bool_list.append(True)
-        outList = [str(x) for x in exonsWithLowMean[1]]
-        outString = ','.join(outList)
-        mean_depth_list.append(outString)
-    else:
-        mean_depth_bool_list.append(False)
-        outList = [str(x) for x in exonsWithLowMean[1]]
-        outString = ','.join(outList)
-        mean_depth_list.append(outString)
-        outString = 'low coverage: ' + outString
+    transcriptNameList = [x[1] for x in meanDepth_covered_tuple]
+    transcriptNameList = list(set(transcriptNameList))
+    transcriptName = transcriptNameList[0]
+    if len(transcriptNameList) > 1:
+        print(f'multiple transcripts detected for gene {n}:')
+        print(transcriptNameList)
+        transcriptName = '_'.join(transcriptNameList)
+    # calculate arithm mean for all exons
+    arithm_mean_list = [float(x[2]) for x in meanDepth_covered_tuple]
+    arithm_mean = statistics.mean(arithm_mean_list)
+    exonsWithMean = getCoverageStringAsList(meanDepth_covered_tuple)
+    outList = [str(x) for x in exonsWithMean[1]]
+    outString = ','.join(outList)
+    # append to lists
+    exons_mean_cov.append(arithm_mean)
+    mean_depth_list.append(outString)
+    transcriptList.append(transcriptName)
+    exon_ct_list.append(exonCt)
     # 20x results
     exonsWithLow20x = getCoverageStringAsList(min20x_covered_tuple)
     if exonsWithLow20x[0] == True:
@@ -154,13 +157,14 @@ for n in geneList:
         cov_100x_list.append(outString)
 df_out = pd.DataFrame({
     'Gene_Name' : gene_name_list,
-    # update 10282021 JRC: Boolean no longer needed 
-    # 'Exons_Above_MeanCov_Threshold' : mean_depth_bool_list, 
-    'Mean_Coverage_for_Exons' : mean_depth_list, 
+    'Transcript_Number' : transcriptList,
+    'Number_of_Exons' : exon_ct_list, 
+    'Mean_Coverage_All_Exons' : exons_mean_cov,
+    'Mean_Coverage_for_Each_Exon' : mean_depth_list, 
     'Exons_at_100_20x' : cov_20x_bool_list, 
-    'Exons_20x_Levels' : cov_20x_list,
+    'Exons_with_lessthan_20x_Levels' : cov_20x_list,
     'Exons_at_100_100x' : cov_100x_bool_list,
-    'Exons_100x_Levels' : cov_100x_list
+    'Exons_with_lessthan_100x_Levels' : cov_100x_list
 })
 
 df_out.to_csv(outFileName, sep='\t', index=False)
