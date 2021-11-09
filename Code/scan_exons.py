@@ -14,6 +14,7 @@ parser.add_argument('--infile', '-i', type=str, help='input filename with covera
 parser.add_argument('--outfile', '-o', type=str, help='output filename')
 parser.add_argument('--sampleName', '-s', type=str, help='sample name in VarSeq output file', required=True)
 parser.add_argument('--geneList', '-g', type=str, help='newline-delimited text file with genes of interest, default is to infer gene names from the VarSeq file.')
+parser.add_argument('--force', type=str, nargs='?', const='False', default='False', choices=['True', 'False'])
 
 args = parser.parse_args()
 outFileName = ''
@@ -46,13 +47,20 @@ else:
             i = i.rstrip('\r\n')
             geneList.append(i)
     # update: compare provided gene list with list of genes, stop if mismatch
-    check_geneList = df['Name'].tolist()
-    checked_geneList = [x for x in check_geneList if x not in geneList]
+    check_geneList_df = df['Name'].tolist()
+    splitList = [x.split('/') for x in check_geneList_df]
+    check_geneList = list(set([x[0] for x in splitList]))
+    checked_geneList = [x for x in geneList if x not in check_geneList]
     if len(checked_geneList) > 0:
         print('Warning, found genes in VarSeq that were not present in provided gene list:')
         print(checked_geneList)
-        print('Exiting now.')
-        sys.exit()
+        time.sleep(2)
+        if args.force != 'True':
+            print('Exiting now')
+            sys.exit()
+        else:
+            print('Proceeding with analysis')
+            time.sleep(2)
 
 def getUniqueExons(df):
     # sort the exons in order by extracting the exon int, 
