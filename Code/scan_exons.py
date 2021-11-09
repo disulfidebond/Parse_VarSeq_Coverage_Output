@@ -65,8 +65,11 @@ def getCoverageStringAsList(l):
     if len(scannedList) > 0:
         return (False, [str(x[0]) + ':' + str(x[2]) for x in scannedList])
     else:
-        scannedValues = [x[2] for x in l]
-        return (True, [min(scannedValues)])
+        # scannedValues = [x[2] for x in l]
+        # update 10282021 JRC: include all exons with sufficient coverage
+        # replaced code below that took max and returned one value 
+        # with returning entire list of exons
+        return (True, [str(x[0]) + ':' + str(x[2]) for x in l])
 
 
 
@@ -116,40 +119,44 @@ for n in geneList:
     exonsWithLowMean = getCoverageStringAsList(meanDepth_covered_tuple)
     if exonsWithLowMean[0] == True:
         mean_depth_bool_list.append(True)
-        mean_depth_list.append(exonsWithLowMean[1][0])
-        # print(f'gene {n} had exons with at least {exonsWithLowMean[1][0]}')
+        outList = [str(x) for x in exonsWithLowMean[1]]
+        outString = ','.join(outList)
+        mean_depth_list.append(outString)
     else:
         mean_depth_bool_list.append(False)
-        outString = ','.join(exonsWithLowMean[1])
+        outList = [str(x) for x in exonsWithLowMean[1]]
+        outString = ','.join(outList)
         mean_depth_list.append(outString)
         outString = 'low coverage: ' + outString
-        # print(outString)
     # 20x results
     exonsWithLow20x = getCoverageStringAsList(min20x_covered_tuple)
     if exonsWithLow20x[0] == True:
         cov_20x_bool_list.append(True)
-        cov_20x_list.append(exonsWithLow20x[1][0])
-        # print(f'gene {n} had exons with at least {exonsWithLow20x[1][0]} 100% 20x coverage')
+        outList = [str(x) for x in exonsWithLow20x[1]]
+        outString = ','.join(outList)
+        cov_20x_list.append(outString)
     else:
         cov_20x_bool_list.append(False)
-        outString = ','.join(exonsWithLow20x[1])
+        outList = [str(x) for x in exonsWithLow20x[1]]
+        outString = ','.join(outList)
         cov_20x_list.append(outString)
-        # print((','.join(exonsWithLow20x[1])))
     # 100x results
     exonsWithLow100x = getCoverageStringAsList(min100x_covered_tuple)
     if exonsWithLow100x[0] == True:
         cov_100x_bool_list.append(True)
-        cov_100x_list.append(exonsWithLow100x[1][0])
-        # print(f'gene {n} had exons with at least {exonsWithLow100x[1][0]}')
+        outList = [str(x) for x in exonsWithLow100x[1]]
+        outString = ','.join(outList)
+        cov_100x_list.append(outString)
     else:
         cov_100x_bool_list.append(False)
-        outString = ','.join(exonsWithLow100x[1])
+        outList = [str(x) for x in exonsWithLow100x[1]]
+        outString = ','.join(outList)
         cov_100x_list.append(outString)
-        # print((','.join(exonsWithLow100x[1])))
 df_out = pd.DataFrame({
-    'Gene_Name' : gene_name_list, 
-    'Exons_Above_MeanCov_Threshold' : mean_depth_bool_list, 
-    'Lowest_Mean_Coverage' : mean_depth_list, 
+    'Gene_Name' : gene_name_list,
+    # update 10282021 JRC: Boolean no longer needed 
+    # 'Exons_Above_MeanCov_Threshold' : mean_depth_bool_list, 
+    'Mean_Coverage_for_Exons' : mean_depth_list, 
     'Exons_at_100_20x' : cov_20x_bool_list, 
     'Exons_20x_Levels' : cov_20x_list,
     'Exons_at_100_100x' : cov_100x_bool_list,
