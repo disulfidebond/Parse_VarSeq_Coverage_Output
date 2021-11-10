@@ -23,6 +23,6 @@ If no text gene list is provided, then the script will assume the gene names in 
 If the `--force` option is used, then the script will output a warning if there is a mismatch between the provided gene list text file and the genes listed in the coverage file, but will still run. If no text gene list is provided, then this option is ignored.
 
 ## R Usage
-The [R script]() can be run from RStudio or Bash. Before running, modify the `inFile` variable to hold the input file name, and the `outFileName` variable to hold the output file name. The script will not check if a file is present before overwriting it.
+The [R script](https://github.com/disulfidebond/Parse_VarSeq_Coverage_Output/blob/main/Code/scan_exons.R) can be run from RStudio or Bash. Before running, modify the `inFile` variable to hold the input file name, and the `outFileName` variable to hold the output file name. The script will not check if a file is present before overwriting it.
 
 To run via commandline, you could do `Rscript scan_exons.py`, and to run it in RStudio, simply load the file and modify the variables as indicated.
