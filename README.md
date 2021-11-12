@@ -25,7 +25,7 @@ If the `--force` option is used, then the script will output a warning if there 
 ## R Usage
 The [R script](https://github.com/disulfidebond/Parse_VarSeq_Coverage_Output/blob/main/Code/scan_exons.R) can be run from RStudio or Bash. Before running, modify the `inFile` variable to hold the input file name, and the `outFileName` variable to hold the output file name. The script will not check if a file is present before overwriting it.
 
-To run via commandline, you could do `Rscript scan_exons.py`, or to run it in RStudio, simply load the file and modify the variables as indicated.
+To run via commandline, you could do `Rscript scan_exons.R`, or to run it in RStudio, simply load the file and modify the variables as indicated.
 
 ## Copyright and License Notice
 
